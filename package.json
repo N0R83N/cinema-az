@@ -1,0 +1,14 @@
+{
+  "name": "cinema-az",
+  "version": "1.0.0",
+  "description": "Cinema Az - Netflix-style movie streaming platform in Azerbaijani",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^5.4.0"
+  }
+}
