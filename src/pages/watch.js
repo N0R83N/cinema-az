@@ -6,6 +6,7 @@ import { cache } from '../utils/cache.js';
 import { fetchMultipleMoviePages, fetchMultipleTVPages } from '../api/vidapi.js';
 import { parseGenres, formatRating, sortByPopularity, filterWithPoster } from '../utils/helpers.js';
 import { router } from '../router/index.js';
+import { createChat } from '../components/Chat.js';
 
 export async function watchPage({ params }) {
   const { type, id, season = '1', episode = '1' } = params;
@@ -24,6 +25,11 @@ export async function watchPage({ params }) {
 
   embedUrl = getEmbedUrl(currentProviderIndex);
 
+  // Detect Room
+  const hashParts = window.location.hash.split('?');
+  const urlParams = new URLSearchParams(hashParts[1] || '');
+  const roomId = urlParams.get('room');
+
   // Player
   const playerWrap = document.createElement('div');
   playerWrap.className = 'player-wrap';
@@ -37,7 +43,21 @@ export async function watchPage({ params }) {
       allow="autoplay; fullscreen; picture-in-picture"
       loading="eager"
     ></iframe>`;
-  page.appendChild(playerWrap);
+
+  if (roomId) {
+    const layout = document.createElement('div');
+    layout.className = 'watch-layout';
+    
+    playerWrap.classList.add('player-flex');
+    layout.appendChild(playerWrap);
+    
+    const chatElement = createChat(roomId);
+    layout.appendChild(chatElement);
+    
+    page.appendChild(layout);
+  } else {
+    page.appendChild(playerWrap);
+  }
 
   // Server Switcher UI
   const serverWrap = document.createElement('div');
@@ -48,6 +68,24 @@ export async function watchPage({ params }) {
   serverLabel.textContent = i18n.t('servers') || 'Servers:';
   serverLabel.style.cssText = 'color:var(--text2); font-size:0.9rem; margin-right:8px; font-weight:600;';
   serverWrap.appendChild(serverLabel);
+
+  // Room Button (only if not in room)
+  if (!roomId) {
+    const roomBtn = document.createElement('button');
+    roomBtn.className = 'btn btn-primary';
+    roomBtn.style.cssText = 'margin-left:auto; padding:6px 14px; font-size:0.8rem; background:linear-gradient(135deg, #00c6ff, #0072ff); border:none;';
+    roomBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;vertical-align:middle"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> ${i18n.t('create_room') || 'Create Virtual Room'}`;
+    roomBtn.addEventListener('click', () => {
+      const newRoomId = Math.random().toString(36).substring(2, 9);
+      const currentHash = window.location.hash;
+      const newHash = currentHash.includes('?') 
+        ? `${currentHash}&room=${newRoomId}`
+        : `${currentHash}?room=${newRoomId}`;
+      window.location.hash = newHash;
+      window.location.reload(); // Force reload to init Supabase
+    });
+    serverWrap.appendChild(roomBtn);
+  }
 
   API.EMBED_PROVIDERS.forEach((provider, idx) => {
     const btn = document.createElement('button');
