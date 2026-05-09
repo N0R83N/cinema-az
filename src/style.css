@@ -443,12 +443,6 @@ ul{list-style:none}
     box-shadow: none;
   }
 }
-. e p - c a r d : h o v e r  
- . e p - t h u m b - o v e r l a y  
-   o p a c i t y :   1   ! i m p o r t a n t ;    
- 
-}
-}
 
 .ep-card:hover .ep-thumb-overlay {
   opacity: 1 !important;
