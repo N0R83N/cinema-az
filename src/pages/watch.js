@@ -62,7 +62,6 @@ export async function watchPage({ params }) {
   // Server Switcher UI
   const serverWrap = document.createElement('div');
   serverWrap.className = 'server-switcher';
-  serverWrap.style.cssText = 'padding:16px 4%; display:flex; gap:10px; flex-wrap:wrap; background:var(--bg2); border-bottom:1px solid rgba(255,255,255,0.05); align-items:center;';
   
   const serverLabel = document.createElement('span');
   serverLabel.textContent = i18n.t('servers') || 'Servers:';
@@ -72,8 +71,7 @@ export async function watchPage({ params }) {
   // Room Button (only if not in room)
   if (!roomId) {
     const roomBtn = document.createElement('button');
-    roomBtn.className = 'btn btn-primary';
-    roomBtn.style.cssText = 'margin-left:auto; padding:6px 14px; font-size:0.8rem; background:linear-gradient(135deg, #00c6ff, #0072ff); border:none;';
+    roomBtn.className = 'btn btn-primary room-create-btn';
     roomBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;vertical-align:middle"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> ${i18n.t('create_room') || 'Create Virtual Room'}`;
     roomBtn.addEventListener('click', () => {
       const newRoomId = Math.random().toString(36).substring(2, 9);
