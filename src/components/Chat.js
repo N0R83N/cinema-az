@@ -11,12 +11,22 @@ export function createChat(roomId) {
   container.innerHTML = `
     <div class="chat-header">
       <div class="chat-title">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-        <span>${i18n.t('chat_title') || 'Room Chat'}</span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span>${i18n.t('chat_title')}</span>
       </div>
-      <button class="btn-name-edit" id="change-name-btn" title="Change Name">
+      <div class="chat-header-btns">
+        <button class="chat-icon-btn" id="share-room-btn" title="${i18n.t('share_room')}">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+        </button>
+        <button class="chat-icon-btn" id="close-room-btn" title="${i18n.t('close_room')}">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="chat-user-bar">
+      <button class="btn-name-edit" id="change-name-btn">
         <span id="current-name">${userName}</span>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
       </button>
     </div>
     <div class="chat-messages" id="chat-messages">
@@ -72,6 +82,25 @@ export function createChat(roomId) {
         addSystemMessage(i18n.t('chat_connected') || 'Connected to real-time chat.');
       }
     });
+
+  const shareBtn = container.querySelector('#share-room-btn');
+  const closeBtn = container.querySelector('#close-room-btn');
+
+  shareBtn.addEventListener('click', () => {
+    navigator.clipboard.writeText(window.location.href).then(() => {
+      const originalTitle = i18n.t('chat_title');
+      container.querySelector('.chat-title span').textContent = i18n.t('link_copied');
+      setTimeout(() => {
+        container.querySelector('.chat-title span').textContent = originalTitle;
+      }, 2000);
+    });
+  });
+
+  closeBtn.addEventListener('click', () => {
+    const hash = window.location.hash.split('?')[0];
+    window.location.hash = hash;
+    window.location.reload();
+  });
 
   form.addEventListener('submit', (e) => {
     e.preventDefault();
