@@ -21,8 +21,8 @@ export async function homePage() {
   const rows = {
     trending: createContentRow(i18n.t('row_trending'), null),
     latest: createContentRow(i18n.t('row_latest_movies'), null),
+    popular: createContentRow(i18n.t('row_popular_movies') || 'IMDb Populyar Filmlər', null),
     series: createContentRow(i18n.t('row_popular_series'), null),
-    episodes: createContentRow(i18n.t('row_new_episodes'), null),
   };
   Object.values(rows).forEach(r => page.appendChild(r));
 
@@ -38,10 +38,9 @@ export async function homePage() {
   // Async data load
   (async () => {
     try {
-      const [movies, tvshows, episodes] = await Promise.all([
-        fetchMultipleMoviePages(3),
+      const [movies, tvshows] = await Promise.all([
+        fetchMultipleMoviePages(4), // Fetch more movies to get a good pool for popularity
         fetchMultipleTVPages(2),
-        fetchMultipleEpisodePages(1),
       ]);
 
       // Replace hero skeleton
@@ -53,22 +52,14 @@ export async function homePage() {
       const trending = sortByPopularity(filterWithPoster(movies)).slice(0, 20);
       const latest = movies.slice(0, 20);
       const popularSeries = sortByPopularity(filterWithPoster(tvshows)).slice(0, 20);
+      
+      // Popular Movies (sorted by rating and popularity)
+      const popularMovies = sortByRating(filterWithPoster(movies)).slice(0, 20);
 
       populateRow(rows.trending, trending);
       populateRow(rows.latest, latest);
       populateRow(rows.series, popularSeries);
-
-      // Episode row — map to card-compatible format
-      const episodeItems = episodes.slice(0, 20).map(ep => ({
-        ...ep,
-        title: ep.show_title || ep.episode_title,
-        type: 'tv',
-        imdb_id: ep.imdb_id || ep.show_imdb_id,
-        tmdb_id: ep.tmdb_id || ep.show_tmdb_id,
-        rating: '0',
-        year: ep.air_date ? ep.air_date.substring(0, 4) : '',
-      }));
-      populateRow(rows.episodes, episodeItems);
+      populateRow(rows.popular, popularMovies);
 
     } catch (err) {
       console.error('Home page load error:', err);
