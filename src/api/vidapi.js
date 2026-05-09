@@ -55,13 +55,39 @@ export async function fetchMultipleTVPages(count = 2) {
 }
 
 export async function fetchMultipleEpisodePages(count = 2) {
-  const pages = Array.from({ length: count }, (_, i) => fetchEpisodes(i + 1));
-  const results = await Promise.allSettled(pages);
-  const items = [];
-  results.forEach(r => {
-    if (r.status === 'fulfilled') items.push(...(r.value.items || []));
-  });
-  return filterHasTitle(items);
+  try {
+    // Parallel fetch episodes and a pool of TV shows to get posters
+    const [epRes, tvPool] = await Promise.all([
+      Promise.all(Array.from({ length: count }, (_, i) => fetchEpisodes(i + 1))),
+      fetchMultipleTVPages(3) // Get ~72 popular TV shows to use as a "Poster Library"
+    ]);
+
+    // Create a quick lookup map for posters by IMDB ID
+    const posterMap = {};
+    tvPool.forEach(tv => {
+      if (tv.imdb_id) posterMap[tv.imdb_id] = tv.poster_url;
+    });
+
+    const items = [];
+    epRes.forEach(res => {
+      const pageItems = (res.items || []).map(item => {
+        const imdbId = item.show_imdb_id;
+        return {
+          ...item,
+          imdb_id: imdbId,
+          tmdb_id: item.show_tmdb_id,
+          title: item.show_title || item.episode_title,
+          poster_url: item.poster_url || posterMap[imdbId] || '', 
+          type: 'tv'
+        };
+      });
+      items.push(...pageItems);
+    });
+
+    return filterHasTitle(items);
+  } catch (e) {
+    return [];
+  }
 }
 
 // Global IMDb Search using JSONP (bypasses all CORS restrictions everywhere)
