@@ -64,14 +64,19 @@ export async function fetchMultipleEpisodePages(count = 2) {
   return filterHasTitle(items);
 }
 
-// Search using IMDb suggestion API (client-side)
+// Search using IMDb suggestion API (client-side with server-side proxy fallback)
 export async function search(query) {
   if (!query || query.length < 2) return { movies: [], tvshows: [] };
   
   // Sanitize query: remove special chars and use lowercase for IMDb suggestion endpoint
   const cleanQuery = query.toLowerCase().trim().replace(/[^a-z0-9 ]/g, '');
   const q = encodeURIComponent(cleanQuery);
-  const url = `https://v2.sg.media-imdb.com/suggestion/${q[0]}/${q}.json`;
+  
+  // Use proxy on production (Cloudflare) to avoid CORS, use direct on localhost
+  const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.includes('.lhr.life');
+  const url = isLocal 
+    ? `https://v2.sg.media-imdb.com/suggestion/${cleanQuery[0] || 'a'}/${q}.json`
+    : `/api/search?q=${q}`;
   
   try {
     const res = await fetch(url);
