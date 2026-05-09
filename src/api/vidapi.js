@@ -64,49 +64,33 @@ export async function fetchMultipleEpisodePages(count = 2) {
   return filterHasTitle(items);
 }
 
-// Search using IMDb suggestion API (client-side with server-side proxy fallback)
+// Robust Search: Fetches recent catalog and filters locally to avoid CORS issues
 export async function search(query) {
   if (!query || query.length < 2) return { movies: [], tvshows: [] };
-  
-  // Sanitize query: remove special chars and use lowercase for IMDb suggestion endpoint
-  const cleanQuery = query.toLowerCase().trim().replace(/[^a-z0-9 ]/g, '');
-  const q = encodeURIComponent(cleanQuery);
-  
-  // Use proxy on production (Cloudflare) to avoid CORS, use direct on localhost
-  const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.includes('.lhr.life');
-  const url = isLocal 
-    ? `https://v2.sg.media-imdb.com/suggestion/${cleanQuery[0] || 'a'}/${q}.json`
-    : `/api/search?q=${q}`;
+  const q = query.toLowerCase().trim();
   
   try {
-    const res = await fetch(url);
-    if (!res.ok) return { movies: [], tvshows: [] };
-    const data = await res.json();
+    // Fetch a significant chunk of the catalog (cached) to search within
+    // We fetch 15 pages each (~360 items per type) to cover most recent/popular content
+    const [movies, tvshows] = await Promise.all([
+      fetchMultipleMoviePages(15),
+      fetchMultipleTVPages(15)
+    ]);
     
-    const movies = [];
-    const tvshows = [];
+    const filteredMovies = movies.filter(m => 
+      (m.title || '').toLowerCase().includes(q)
+    );
     
-    (data.d || []).forEach(item => {
-      // Only include actual titles starting with 'tt'
-      if (!item.id || !item.id.startsWith('tt')) return;
-      
-      const mapped = {
-        imdb_id: item.id,
-        tmdb_id: null,
-        title: item.l,
-        type: item.qid === 'tvSeries' ? 'tv' : 'movie',
-        poster_url: item.i ? item.i.imageUrl : '',
-        year: item.y ? String(item.y) : '',
-        rating: '',
-        genre: item.s || '' // Subtitle (e.g. actors)
-      };
-      
-      if (mapped.type === 'movie') movies.push(mapped);
-      else tvshows.push(mapped);
-    });
+    const filteredTV = tvshows.filter(t => 
+      (t.title || '').toLowerCase().includes(q)
+    );
     
-    return { movies, tvshows };
+    return { 
+      movies: filteredMovies, 
+      tvshows: filteredTV 
+    };
   } catch (e) {
+    console.error('Search failed:', e);
     return { movies: [], tvshows: [] };
   }
 }
