@@ -35,7 +35,6 @@ export async function watchPage({ params }) {
       frameborder="0"
       allowfullscreen
       allow="autoplay; fullscreen; picture-in-picture"
-      sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
       loading="eager"
     ></iframe>`;
   page.appendChild(playerWrap);
