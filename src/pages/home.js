@@ -61,11 +61,10 @@ export async function homePage() {
       // Episode row — map to card-compatible format
       const episodeItems = episodes.slice(0, 20).map(ep => ({
         ...ep,
-        title: ep.episode_title || ep.show_title,
+        title: ep.show_title || ep.episode_title,
         type: 'tv',
-        imdb_id: ep.show_imdb_id,
-        tmdb_id: ep.show_tmdb_id,
-        poster_url: '',
+        imdb_id: ep.imdb_id || ep.show_imdb_id,
+        tmdb_id: ep.tmdb_id || ep.show_tmdb_id,
         rating: '0',
         year: ep.air_date ? ep.air_date.substring(0, 4) : '',
       }));

@@ -49,9 +49,14 @@ export async function episodesPage() {
     const e = String(ep.episode_number || 1).padStart(2, '0');
     const badge = `${i18n.t('episode_season')}${s}${i18n.t('episode_ep')}${e}`;
 
+    const poster = ep.poster_url;
+
     card.innerHTML = `
-      <div class="ep-thumb" style="position:relative;background:var(--bg3);border-radius:4px;display:flex;align-items:center;justify-content:center;">
-        <svg style="opacity:.35" width="20" height="20" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg>
+      <div class="ep-thumb" style="position:relative;background:var(--bg3);border-radius:4px;overflow:hidden;background-image:url(${poster});background-size:cover;background-position:center;">
+        ${!poster ? `<svg style="opacity:.35" width="20" height="20" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg>` : ''}
+        <div class="ep-thumb-overlay" style="position:absolute;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;">
+           <svg width="24" height="24" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg>
+        </div>
       </div>
       <div class="ep-info">
         <div class="ep-show">${ep.show_title || ''}</div>
