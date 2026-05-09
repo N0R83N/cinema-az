@@ -68,7 +68,42 @@ export async function watchPage({ params }) {
   serverLabel.style.cssText = 'color:var(--text2); font-size:0.9rem; margin-right:8px; font-weight:600;';
   serverWrap.appendChild(serverLabel);
 
-  // Room Button (only if not in room)
+  API.EMBED_PROVIDERS.forEach((provider, idx) => {
+    const btn = document.createElement('button');
+    btn.className = `btn btn-outline ${idx === currentProviderIndex ? 'active' : ''}`;
+    btn.style.cssText = 'padding:6px 14px; font-size:0.8rem;';
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;vertical-align:middle"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="6" x2="6.01" y2="6"/></svg> ${provider.name}`;
+    
+    if (idx === currentProviderIndex) {
+      btn.style.background = 'var(--accent)';
+      btn.style.borderColor = 'var(--accent)';
+      btn.style.color = '#fff';
+    }
+
+    btn.addEventListener('click', () => {
+      currentProviderIndex = idx;
+      serverWrap.querySelectorAll('button').forEach((b, i) => {
+        // Skip the Room Create button if it exists
+        if (!b.classList.contains('btn-outline')) return;
+        
+        const bIdx = Array.from(serverWrap.querySelectorAll('.btn-outline')).indexOf(b);
+        if (bIdx === idx) {
+          b.style.background = 'var(--accent)';
+          b.style.borderColor = 'var(--accent)';
+          b.style.color = '#fff';
+        } else {
+          b.style.background = 'transparent';
+          b.style.borderColor = 'rgba(255,255,255,0.4)';
+          b.style.color = '#fff';
+        }
+      });
+      const iframe = playerWrap.querySelector('#video-player');
+      if (iframe) iframe.src = getEmbedUrl(currentProviderIndex);
+    });
+    serverWrap.appendChild(btn);
+  });
+
+  // Room Button (now at the end)
   if (!roomId) {
     const roomBtn = document.createElement('button');
     roomBtn.className = 'btn btn-primary room-create-btn';
@@ -84,37 +119,6 @@ export async function watchPage({ params }) {
     });
     serverWrap.appendChild(roomBtn);
   }
-
-  API.EMBED_PROVIDERS.forEach((provider, idx) => {
-    const btn = document.createElement('button');
-    btn.className = `btn btn-outline ${idx === currentProviderIndex ? 'active' : ''}`;
-    btn.style.cssText = 'padding:6px 14px; font-size:0.8rem;';
-    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;vertical-align:middle"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg> ${provider.name}`;
-    
-    if (idx === currentProviderIndex) {
-      btn.style.background = 'var(--accent)';
-      btn.style.borderColor = 'var(--accent)';
-      btn.style.color = '#fff';
-    }
-
-    btn.addEventListener('click', () => {
-      currentProviderIndex = idx;
-      serverWrap.querySelectorAll('button').forEach((b, i) => {
-        if (i === idx) {
-          b.style.background = 'var(--accent)';
-          b.style.borderColor = 'var(--accent)';
-          b.style.color = '#fff';
-        } else {
-          b.style.background = 'transparent';
-          b.style.borderColor = 'rgba(255,255,255,0.4)';
-          b.style.color = '#fff';
-        }
-      });
-      const iframe = playerWrap.querySelector('#video-player');
-      if (iframe) iframe.src = getEmbedUrl(currentProviderIndex);
-    });
-    serverWrap.appendChild(btn);
-  });
 
   page.appendChild(serverWrap);
 
