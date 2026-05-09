@@ -1,6 +1,6 @@
 import { i18n } from '../i18n/index.js';
 import { createFooter } from '../components/footer.js';
-import { fetchEpisodes } from '../api/vidapi.js';
+import { fetchEpisodes, fetchMultipleTVPages } from '../api/vidapi.js';
 import { formatAirDate } from '../utils/helpers.js';
 import { router } from '../router/index.js';
 import { APP_CONFIG } from '../config.js';
@@ -78,12 +78,24 @@ export async function episodesPage() {
     if (loading) return;
     loading = true;
     try {
-      const data = await fetchEpisodes(p);
+      const [data, tvPool] = await Promise.all([
+        fetchEpisodes(p),
+        fetchMultipleTVPages(5) // Fetch pool for poster matching
+      ]);
+      
+      const posterMap = {};
+      tvPool.forEach(tv => { if (tv.imdb_id) posterMap[tv.imdb_id] = tv.poster_url; });
+
       totalPages = data.total_pages;
       if (p === 1) grid.innerHTML = '';
+      
       (data.items || [])
         .filter(ep => ep.show_title || ep.episode_title)
-        .forEach(ep => grid.appendChild(createEpCard(ep)));
+        .forEach(ep => {
+          // Attach poster if missing
+          ep.poster_url = ep.poster_url || posterMap[ep.show_imdb_id] || '';
+          grid.appendChild(createEpCard(ep));
+        });
       currentPage = p;
     } catch (e) {
       console.error(e);
