@@ -67,8 +67,11 @@ export async function fetchMultipleEpisodePages(count = 2) {
 // Search using IMDb suggestion API (client-side)
 export async function search(query) {
   if (!query || query.length < 2) return { movies: [], tvshows: [] };
-  const q = encodeURIComponent(query.toLowerCase());
-  const url = `https://v3.sg.media-imdb.com/suggestion/x/${q}.json`;
+  
+  // Sanitize query: remove special chars and use lowercase for IMDb suggestion endpoint
+  const cleanQuery = query.toLowerCase().trim().replace(/[^a-z0-9 ]/g, '');
+  const q = encodeURIComponent(cleanQuery);
+  const url = `https://v2.sg.media-imdb.com/suggestion/${q[0]}/${q}.json`;
   
   try {
     const res = await fetch(url);
