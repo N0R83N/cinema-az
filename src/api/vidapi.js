@@ -64,33 +64,52 @@ export async function fetchMultipleEpisodePages(count = 2) {
   return filterHasTitle(items);
 }
 
-// Robust Search: Fetches recent catalog and filters locally to avoid CORS issues
+// Global IMDb Search using JSONP (bypasses all CORS restrictions everywhere)
 export async function search(query) {
   if (!query || query.length < 2) return { movies: [], tvshows: [] };
-  const q = query.toLowerCase().trim();
   
-  try {
-    // Fetch a significant chunk of the catalog (cached) to search within
-    // We fetch 15 pages each (~360 items per type) to cover most recent/popular content
-    const [movies, tvshows] = await Promise.all([
-      fetchMultipleMoviePages(15),
-      fetchMultipleTVPages(15)
-    ]);
+  const cleanQ = query.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
+  const firstChar = cleanQ[0] || 'a';
+  const callbackName = `imdb$${cleanQ}`;
+  const url = `https://sg.media-imdb.com/suggests/${firstChar}/${cleanQ}.json`;
+
+  return new Promise((resolve) => {
+    const script = document.createElement('script');
     
-    const filteredMovies = movies.filter(m => 
-      (m.title || '').toLowerCase().includes(q)
-    );
-    
-    const filteredTV = tvshows.filter(t => 
-      (t.title || '').toLowerCase().includes(q)
-    );
-    
-    return { 
-      movies: filteredMovies, 
-      tvshows: filteredTV 
+    // IMDb JSONP callback
+    window[callbackName] = (data) => {
+      const movies = [];
+      const tvshows = [];
+      
+      (data.d || []).forEach(item => {
+        if (!item.id || !item.id.startsWith('tt')) return;
+        
+        const mapped = {
+          imdb_id: item.id,
+          tmdb_id: null,
+          title: item.l,
+          type: (item.qid === 'tvSeries' || item.qid === 'tvMiniSeries') ? 'tv' : 'movie',
+          poster_url: (item.i && item.i[0]) ? item.i[0] : '',
+          year: item.y ? String(item.y) : '',
+          rating: '',
+          genre: item.s || ''
+        };
+        
+        if (mapped.type === 'movie') movies.push(mapped);
+        else tvshows.push(mapped);
+      });
+      
+      resolve({ movies, tvshows });
+      document.head.removeChild(script);
+      delete window[callbackName];
     };
-  } catch (e) {
-    console.error('Search failed:', e);
-    return { movies: [], tvshows: [] };
-  }
+
+    script.src = url;
+    script.onerror = () => {
+      resolve({ movies: [], tvshows: [] });
+      if (document.head.contains(script)) document.head.removeChild(script);
+      delete window[callbackName];
+    };
+    document.head.appendChild(script);
+  });
 }
