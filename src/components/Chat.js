@@ -9,12 +9,15 @@ export function createChat(roomId) {
   let channel = null;
 
   container.innerHTML = `
-    <div class="chat-header">
-      <div class="chat-title">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-        <span>${i18n.t('chat_title')}</span>
+    <div class="chat-header" style="flex-wrap: wrap; gap: 8px;">
+      <div class="chat-title-container" style="display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 150px;">
+        <div class="chat-title" style="display: flex; align-items: center; gap: 8px;">
+          <span class="chat-status-dot connecting" id="chat-status-dot" style="width: 8px; height: 8px; border-radius: 50%; display: inline-block;"></span>
+          <span>${i18n.t('chat_title')}</span>
+        </div>
+        <div class="chat-room-id" style="font-size: 0.7rem; color: var(--text3); font-weight: 500; padding-left: 16px;">Otaq ID: #${roomId}</div>
       </div>
-      <div class="chat-header-btns">
+      <div class="chat-header-btns" style="display: flex; gap: 8px; align-items: center;">
         <button class="chat-icon-btn" id="share-room-btn" title="${i18n.t('share_room')}">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
         </button>
@@ -65,6 +68,8 @@ export function createChat(roomId) {
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
   }
 
+  const statusDot = container.querySelector('#chat-status-dot');
+
   // Initialize Supabase Realtime
   channel = supabase.channel(`room_${roomId}`, {
     config: { broadcast: { self: false } }
@@ -77,9 +82,20 @@ export function createChat(roomId) {
     .on('broadcast', { event: 'sync_request' }, (payload) => {
       addSystemMessage(`${payload.payload.user} ${i18n.t('chat_sync_msg') || 'is at'} ${payload.payload.time}`);
     })
-    .subscribe((status) => {
+    .subscribe((status, err) => {
       if (status === 'SUBSCRIBED') {
+        statusDot.className = 'chat-status-dot connected';
+        statusDot.title = 'Connected';
         addSystemMessage(i18n.t('chat_connected') || 'Connected to real-time chat.');
+      } else if (status === 'CHANNEL_ERROR') {
+        statusDot.className = 'chat-status-dot error';
+        statusDot.title = `Error: ${err?.message || 'Connection failed'}`;
+        addSystemMessage(`Xəta: Çat bağlantısı qurulmadı. (${err?.message || 'Realtime qoşulma xətası'})`);
+        console.error('Realtime subscription error:', err);
+      } else if (status === 'TIMED_OUT') {
+        statusDot.className = 'chat-status-dot error';
+        statusDot.title = 'Connection timed out';
+        addSystemMessage('Xəta: Çat bağlantısı zaman aşımına uğradı. Səhifəni yeniləyin.');
       }
     });
 

@@ -284,6 +284,28 @@ ul{list-style:none}
   color: var(--text1);
 }
 
+.chat-status-dot.connecting {
+  background-color: #ff9800;
+  box-shadow: 0 0 8px #ff9800;
+  animation: chat-pulse 1.5s infinite;
+}
+
+.chat-status-dot.connected {
+  background-color: #4caf50;
+  box-shadow: 0 0 8px #4caf50;
+}
+
+.chat-status-dot.error {
+  background-color: #f44336;
+  box-shadow: 0 0 8px #f44336;
+}
+
+@keyframes chat-pulse {
+  0% { opacity: 0.4; }
+  50% { opacity: 1; }
+  100% { opacity: 0.4; }
+}
+
 .chat-header-btns {
   display: flex;
   gap: 8px;
