@@ -130,7 +130,7 @@ export async function search(query) {
           poster_url: (item.i && item.i[0]) ? item.i[0] : '',
           year: item.y ? String(item.y) : '',
           rating: '',
-          genre: item.s || ''
+          genre: ''
         };
         
         if (mapped.type === 'movie') movies.push(mapped);
