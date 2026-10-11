@@ -1,6 +1,6 @@
 import { i18n } from '../i18n/index.js';
 import { createFooter } from '../components/footer.js';
-import { fetchEpisodes, fetchMultipleTVPages } from '../api/vidapi.js';
+import { fetchEpisodes, fetchMultipleTVPages, search as searchIMDb } from '../api/vidapi.js';
 import { formatAirDate } from '../utils/helpers.js';
 import { router } from '../router/index.js';
 import { APP_CONFIG } from '../config.js';
@@ -98,6 +98,31 @@ export async function episodesPage() {
         if (tv.tmdb_id) posterMap[`tmdb:${String(tv.tmdb_id)}`] = tv.poster_url;
         if (tv.title) posterMap[`title:${normalizeTitle(tv.title)}`] = tv.poster_url;
       });
+
+      const episodeItems = (data.items || []).filter(ep => ep.show_title || ep.episode_title);
+      const missingTitles = [...new Set(episodeItems
+        .filter(ep => !ep.poster_url
+          && !posterMap[`tmdb:${String(ep.show_tmdb_id || '')}`]
+          && !posterMap[`imdb:${String(ep.show_imdb_id || '').toLowerCase()}`]
+          && !posterMap[`title:${normalizeTitle(ep.show_title)}`])
+        .map(ep => ep.show_title)
+        .filter(Boolean))];
+
+      // Older or less common shows may not be in the first 120 catalog entries.
+      // Use IMDb suggestions as a title-based fallback, accepting exact title matches only.
+      await Promise.all(missingTitles.map(async title => {
+        try {
+          const result = await Promise.race([
+            searchIMDb(title),
+            new Promise(resolve => setTimeout(() => resolve({ tvshows: [] }), 3500))
+          ]);
+          const expectedTitle = normalizeTitle(title);
+          const match = (result.tvshows || []).find(show =>
+            show.poster_url && normalizeTitle(show.title) === expectedTitle
+          );
+          if (match) posterMap[`title:${expectedTitle}`] = match.poster_url;
+        } catch { }
+      }));
 
       totalPages = data.total_pages;
       if (p === 1) grid.innerHTML = '';
