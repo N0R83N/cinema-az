@@ -53,7 +53,7 @@ export async function seriesPage() {
     grid.innerHTML = '';
     const filtered = applyFilters(allItems);
     if (!filtered.length) {
-      grid.innerHTML = `<p style="color:var(--text3);padding:40px 0;grid-column:1/-1;text-align:center">${i18n.t('no_content')}</p>`;
+      grid.innerHTML = `<div class="category-empty" style="color:var(--text3);padding:40px 0;grid-column:1/-1;text-align:center">${currentPage >= totalPages ? i18n.t('no_content') : 'Bu kategoride henüz eşleşme bulunmadı; sonraki sayfaları da arayabilirsiniz.'}${currentPage < totalPages ? '<button type="button" class="filter-btn category-load-more" style="display:block;margin:16px auto 0">Daha fazla sonuç ara</button>' : ''}</div>`;
       return;
     }
     filtered.forEach(item => grid.appendChild(createMovieCard({ ...item, type: 'tv' })));
@@ -80,6 +80,10 @@ export async function seriesPage() {
     renderGrid();
   });
 
+  grid.addEventListener('click', e => {
+    if (e.target.closest('.category-load-more')) loadPage(currentPage + 1);
+  });
+
   filterBar.querySelector('#sort-select').addEventListener('change', e => {
     activeSort = e.target.value;
     renderGrid();
@@ -94,11 +98,7 @@ export async function seriesPage() {
       const items = filterWithPoster(data.items || []);
       allItems.push(...items);
       addGenreFilters();
-      if (p === 1) {
-        renderGrid();
-      } else {
-        applyFilters(items).forEach(item => grid.appendChild(createMovieCard({ ...item, type: 'tv' })));
-      }
+      renderGrid();
       currentPage = p;
     } catch (e) {
       console.error(e);
@@ -108,7 +108,8 @@ export async function seriesPage() {
   }
 
   new IntersectionObserver(entries => {
-    if (entries[0].isIntersecting && currentPage < totalPages) loadPage(currentPage + 1);
+    const hasGenreMatches = activeGenre === 'all' || allItems.some(item => matchesGenre(item, activeGenre));
+    if (entries[0].isIntersecting && currentPage < totalPages && hasGenreMatches) loadPage(currentPage + 1);
   }, { rootMargin: `${APP_CONFIG.infiniteScrollOffset}px` }).observe(sentinel);
 
   loadPage(1);
