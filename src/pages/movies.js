@@ -2,7 +2,7 @@ import { i18n } from '../i18n/index.js';
 import { createMovieCard, createSkeletonCards } from '../components/movieCard.js';
 import { createFooter } from '../components/footer.js';
 import { fetchMovies } from '../api/vidapi.js';
-import { sortByPopularity, sortByRating, filterWithPoster, extractGenres } from '../utils/helpers.js';
+import { sortByPopularity, sortByRating, filterWithPoster, extractGenres, matchesGenre } from '../utils/helpers.js';
 import { APP_CONFIG } from '../config.js';
 
 export async function moviesPage({ query }) {
@@ -48,7 +48,7 @@ export async function moviesPage({ query }) {
   page.appendChild(createFooter());
 
   function applyFilters(items) {
-    let filtered = activeGenre === 'all' ? items : items.filter(i => (i.genre || '').includes(activeGenre));
+    let filtered = activeGenre === 'all' ? items : items.filter(i => matchesGenre(i, activeGenre));
     if (activeSort === 'rating') filtered = sortByRating(filtered);
     else if (activeSort === 'popular') filtered = sortByPopularity(filtered);
     return filtered;
@@ -65,55 +65,25 @@ export async function moviesPage({ query }) {
   }
 
   function updateGenreFilters() {
-    const TARGET_GENRES = [
-      { id: 'Action', label: 'Action' },
-      { id: 'Adult', label: 'Adult' },
-      { id: 'Adventure', label: 'Adventure' },
-      { id: 'Animation', label: 'Animation' },
-      { id: 'Biography', label: 'Biography' },
-      { id: 'Comedy', label: 'Comedy' },
-      { id: 'Crime', label: 'Crime' },
-      { id: 'Documentary', label: 'Documentary' },
-      { id: 'Drama', label: 'Drama' },
-      { id: 'Family', label: 'Family' },
-      { id: 'Fantasy', label: 'Fantasy' },
-      { id: 'Film-Noir', label: 'Film-Noir' },
-      { id: 'Game-Show', label: 'Game-Show' },
-      { id: 'History', label: 'History' },
-      { id: 'Horror', label: 'Horror' },
-      { id: 'Music', label: 'Music' },
-      { id: 'Musical', label: 'Musical' },
-      { id: 'Mystery', label: 'Mystery' },
-      { id: 'News', label: 'News' },
-      { id: 'Reality-TV', label: 'Reality-TV' },
-      { id: 'Romance', label: 'Romance' },
-      { id: 'Sci-Fi', label: 'Sci-Fi' },
-      { id: 'Short', label: 'Short' },
-      { id: 'Sport', label: 'Sport' },
-      { id: 'Talk-Show', label: 'Talk-Show' },
-      { id: 'Thriller', label: 'Thriller' },
-      { id: 'War', label: 'War' },
-      { id: 'Western', label: 'Western' }
-    ];
-
     const sel = filterBar.querySelector('#sort-select');
-    TARGET_GENRES.forEach(g => {
+    filterBar.querySelectorAll('.filter-btn:not([data-genre="all"])').forEach(btn => btn.remove());
+    extractGenres(allItems).forEach(genre => {
       const btn = document.createElement('button');
-      btn.className = 'filter-btn';
-      btn.dataset.genre = g.id;
-      btn.textContent = g.label;
+      btn.className = 'filter-btn' + (activeGenre === genre ? ' active' : '');
+      btn.dataset.genre = genre;
+      btn.textContent = genre;
       filterBar.insertBefore(btn, sel);
     });
-    
-    filterBar.querySelectorAll('.filter-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        filterBar.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        activeGenre = btn.dataset.genre;
-        renderGrid(allItems);
-      });
-    });
   }
+
+  filterBar.addEventListener('click', e => {
+    const btn = e.target.closest('.filter-btn[data-genre]');
+    if (!btn || !filterBar.contains(btn)) return;
+    filterBar.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeGenre = btn.dataset.genre;
+    renderGrid(allItems);
+  });
 
   filterBar.querySelector('#sort-select').addEventListener('change', (e) => {
     activeSort = e.target.value;
@@ -128,7 +98,8 @@ export async function moviesPage({ query }) {
       totalPages = data.total_pages;
       const newItems = filterWithPoster(data.items || []);
       allItems.push(...newItems);
-      if (p === 1) { updateGenreFilters(); renderGrid(allItems); }
+      updateGenreFilters();
+      if (p === 1) { renderGrid(allItems); }
       else { applyFilters(newItems).forEach(item => grid.appendChild(createMovieCard(item))); }
       currentPage = p;
     } catch { } finally { loading = false; }
