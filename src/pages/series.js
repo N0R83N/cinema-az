@@ -2,7 +2,7 @@ import { i18n } from '../i18n/index.js';
 import { createMovieCard, createSkeletonCards } from '../components/movieCard.js';
 import { createFooter } from '../components/footer.js';
 import { fetchTVShows } from '../api/vidapi.js';
-import { sortByPopularity, sortByRating, filterWithPoster, extractGenres } from '../utils/helpers.js';
+import { sortByPopularity, sortByRating, filterWithPoster, extractGenres, matchesGenre } from '../utils/helpers.js';
 import { APP_CONFIG } from '../config.js';
 
 export async function seriesPage() {
@@ -43,7 +43,7 @@ export async function seriesPage() {
   page.appendChild(createFooter());
 
   function applyFilters(items) {
-    let f = activeGenre === 'all' ? items : items.filter(i => (i.genre || '').includes(activeGenre));
+    let f = activeGenre === 'all' ? items : items.filter(i => matchesGenre(i, activeGenre));
     if (activeSort === 'rating') f = sortByRating(f);
     else if (activeSort === 'popular') f = sortByPopularity(f);
     return f;
@@ -60,55 +60,25 @@ export async function seriesPage() {
   }
 
   function addGenreFilters() {
-    const TARGET_GENRES = [
-      { id: 'Action', label: 'Action' },
-      { id: 'Adult', label: 'Adult' },
-      { id: 'Adventure', label: 'Adventure' },
-      { id: 'Animation', label: 'Animation' },
-      { id: 'Biography', label: 'Biography' },
-      { id: 'Comedy', label: 'Comedy' },
-      { id: 'Crime', label: 'Crime' },
-      { id: 'Documentary', label: 'Documentary' },
-      { id: 'Drama', label: 'Drama' },
-      { id: 'Family', label: 'Family' },
-      { id: 'Fantasy', label: 'Fantasy' },
-      { id: 'Film-Noir', label: 'Film-Noir' },
-      { id: 'Game-Show', label: 'Game-Show' },
-      { id: 'History', label: 'History' },
-      { id: 'Horror', label: 'Horror' },
-      { id: 'Music', label: 'Music' },
-      { id: 'Musical', label: 'Musical' },
-      { id: 'Mystery', label: 'Mystery' },
-      { id: 'News', label: 'News' },
-      { id: 'Reality-TV', label: 'Reality-TV' },
-      { id: 'Romance', label: 'Romance' },
-      { id: 'Sci-Fi', label: 'Sci-Fi' },
-      { id: 'Short', label: 'Short' },
-      { id: 'Sport', label: 'Sport' },
-      { id: 'Talk-Show', label: 'Talk-Show' },
-      { id: 'Thriller', label: 'Thriller' },
-      { id: 'War', label: 'War' },
-      { id: 'Western', label: 'Western' }
-    ];
-
     const sel = filterBar.querySelector('#sort-select');
-    TARGET_GENRES.forEach(g => {
+    filterBar.querySelectorAll('.filter-btn:not([data-genre="all"])').forEach(btn => btn.remove());
+    extractGenres(allItems).forEach(genre => {
       const btn = document.createElement('button');
-      btn.className = 'filter-btn';
-      btn.dataset.genre = g.id;
-      btn.textContent = g.label;
+      btn.className = 'filter-btn' + (activeGenre === genre ? ' active' : '');
+      btn.dataset.genre = genre;
+      btn.textContent = genre;
       filterBar.insertBefore(btn, sel);
     });
-    
-    filterBar.querySelectorAll('.filter-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        filterBar.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        activeGenre = btn.dataset.genre;
-        renderGrid();
-      });
-    });
   }
+
+  filterBar.addEventListener('click', e => {
+    const btn = e.target.closest('.filter-btn[data-genre]');
+    if (!btn || !filterBar.contains(btn)) return;
+    filterBar.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeGenre = btn.dataset.genre;
+    renderGrid();
+  });
 
   filterBar.querySelector('#sort-select').addEventListener('change', e => {
     activeSort = e.target.value;
@@ -123,8 +93,8 @@ export async function seriesPage() {
       totalPages = data.total_pages;
       const items = filterWithPoster(data.items || []);
       allItems.push(...items);
+      addGenreFilters();
       if (p === 1) {
-        addGenreFilters();
         renderGrid();
       } else {
         applyFilters(items).forEach(item => grid.appendChild(createMovieCard({ ...item, type: 'tv' })));
