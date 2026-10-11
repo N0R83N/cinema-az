@@ -68,15 +68,23 @@ export async function fetchMultipleEpisodePages(count = 2) {
     // Try to recover posters for these episodes
     // 1. Get a pool of latest TV shows to match posters
     const tvPool = await fetchMultipleTVPages(5); // Get ~120 popular shows
-    const posterMap = {};
+    const posterMap = Object.create(null);
+    const normalizeTitle = value => String(value || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
     tvPool.forEach(tv => {
-      if (tv.imdb_id) posterMap[tv.imdb_id] = tv.poster_url;
+      if (!tv.poster_url) return;
+      if (tv.imdb_id) posterMap[`imdb:${String(tv.imdb_id).toLowerCase()}`] = tv.poster_url;
+      if (tv.tmdb_id) posterMap[`tmdb:${String(tv.tmdb_id)}`] = tv.poster_url;
+      if (tv.title) posterMap[`title:${normalizeTitle(tv.title)}`] = tv.poster_url;
     });
 
     // 2. Map items and use a clever fallback for missing posters
     const mappedItems = items.map(item => {
       const imdbId = item.show_imdb_id;
-      let poster = item.poster_url || posterMap[imdbId] || '';
+      const poster = item.poster_url
+        || posterMap[`tmdb:${String(item.show_tmdb_id || '')}`]
+        || posterMap[`imdb:${String(imdbId || '').toLowerCase()}`]
+        || posterMap[`title:${normalizeTitle(item.show_title)}`]
+        || '';
       
       // If still no poster, we'll try a public TMDB/IMDB lookup pattern if we can
       // For now, we'll use a specific placeholder that looks better
