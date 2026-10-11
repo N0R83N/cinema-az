@@ -7,6 +7,9 @@ export const API = {
 
   // Provider URL builders accept an explicitly selected identifier type.
   EMBED_PROVIDERS: [
+    { id: 'vidsrc-embed', name: 'VidSrc Embed', idType: 'tmdb', movie: id => `https://vidsrc-embed.ru/embed/movie?tmdb=${id}`, tv: (id, s, e) => `https://vidsrc-embed.ru/embed/tv?tmdb=${id}&season=${s}&episode=${e}` },
+    { id: 'vaplayer', name: 'VAPLayer', idType: 'both', movie: id => `https://vaplayer.ru/embed/movie/${id}`, tv: (id, s, e) => `https://vaplayer.ru/embed/tv/${id}/${s}/${e}` },
+    { id: '2embed', name: '2Embed', idType: 'tmdb', movie: id => `https://www.2embed.cc/embed/${id}`, tv: (id, s, e) => `https://www.2embed.cc/embedtv/${id}&s=${s}&e=${e}` },
     { id: 'vidcore', name: 'VidCore', idType: 'tmdb', movie: id => `https://vidcore.org/embed/movie/${id}?theme=E50914`, tv: (id, s, e) => `https://vidcore.org/embed/tv/${id}/${s}/${e}?theme=E50914` },
     { id: 'embedwave', name: 'EmbedWave', idType: 'tmdb', movie: id => `https://embedwave.cc/embed/movie/${id}?server=auto`, tv: (id, s, e) => `https://embedwave.cc/embed/tv/${id}/${s}/${e}?server=auto` },
     { id: 'ezvidapi', name: 'ezvidapi', idType: 'tmdb', movie: id => `https://ezvidapi.com/embed/movie/${id}`, tv: (id, s, e) => `https://ezvidapi.com/embed/tv/${id}/${s}/${e}` },
