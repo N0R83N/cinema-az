@@ -55,9 +55,18 @@ export function getEmbedUrl(item, season, episode) {
   return null;
 }
 
-export function parseGenres(genreStr) {
-  if (!genreStr) return [];
-  return genreStr.split(',').map(g => g.trim()).filter(Boolean);
+export function parseGenres(genreInput) {
+  if (!genreInput) return [];
+  const values = Array.isArray(genreInput) ? genreInput : String(genreInput).split(/[,;|]/);
+  const combined = { 'sci-fi & fantasy': ['Sci-Fi', 'Fantasy'], 'science fiction & fantasy': ['Sci-Fi', 'Fantasy'], 'action & adventure': ['Action', 'Adventure'] };
+  const aliases = { 'science fiction': 'Sci-Fi', 'sci fi': 'Sci-Fi', 'sci-fi': 'Sci-Fi', 'reality-tv': 'Reality TV', 'reality tv': 'Reality TV', 'film noir': 'Film-Noir', 'film-noir': 'Film-Noir', 'talk show': 'Talk-Show', 'talk-show': 'Talk-Show', 'tv movie': 'TV Movie' };
+  return [...new Set(values.flatMap(value => {
+    const label = String(value || '').trim().replace(/[–—]/g, '-').replace(/\s+/g, ' ');
+    if (!label) return [];
+    const key = label.toLowerCase();
+    if (combined[key]) return combined[key];
+    return [aliases[key] || label];
+  }))];
 }
 
 export function formatAirDate(dateStr) {
@@ -93,10 +102,19 @@ export function getTopRated(items, count = 5) {
 
 export function extractGenres(items) {
   const genreSet = new Set();
-  items.forEach(item => {
-    parseGenres(item.genre).forEach(g => genreSet.add(g));
+  items.forEach(item => parseGenres(item.genre ?? item.genres).forEach(g => genreSet.add(g)));
+  const order = ['Action', 'Adventure', 'Animation', 'Biography', 'Comedy', 'Crime', 'Documentary', 'Drama', 'Family', 'Fantasy', 'Film-Noir', 'Game-Show', 'History', 'Horror', 'Music', 'Musical', 'Mystery', 'News', 'Reality TV', 'Romance', 'Sci-Fi', 'Short', 'Sport', 'Talk-Show', 'Thriller', 'TV Movie', 'War', 'Western'];
+  return [...genreSet].sort((a, b) => {
+    const ai = order.indexOf(a), bi = order.indexOf(b);
+    if (ai < 0 && bi < 0) return a.localeCompare(b);
+    if (ai < 0) return 1;
+    if (bi < 0) return -1;
+    return ai - bi;
   });
-  return Array.from(genreSet).sort();
+}
+
+export function matchesGenre(item, genre) {
+  return genre === 'all' || parseGenres(item?.genre ?? item?.genres).includes(genre);
 }
 
 export function createElement(tag, attrs = {}, children = []) {
