@@ -37,8 +37,12 @@ export function createMovieCard(item) {
 
   div.addEventListener('click', (e) => {
     if (e.target.closest('.card-watchlist-btn')) return;
-    if (type === 'movie') router.navigate(`/watch/movie/${id}`);
-    else router.navigate(`/watch/tv/${id}/1/1`);
+    const ids = new URLSearchParams();
+    if (item.tmdb_id) ids.set('tmdb', item.tmdb_id);
+    if (item.imdb_id) ids.set('imdb', item.imdb_id);
+    const query = ids.toString() ? `?${ids}` : '';
+    if (type === 'movie') router.navigate(`/watch/movie/${encodeURIComponent(id)}${query}`);
+    else router.navigate(`/watch/tv/${encodeURIComponent(id)}/1/1${query}`);
   });
 
   div.querySelector('.card-watchlist-btn').addEventListener('click', (e) => {

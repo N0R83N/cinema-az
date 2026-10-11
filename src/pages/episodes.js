@@ -69,7 +69,12 @@ export async function episodesPage() {
 
     card.style.cursor = 'pointer';
     card.addEventListener('click', () => {
-      if (id) router.navigate(`/watch/tv/${id}/${ep.season_number}/${ep.episode_number}`);
+      if (id) {
+        const ids = new URLSearchParams();
+        if (ep.show_tmdb_id) ids.set('tmdb', ep.show_tmdb_id);
+        if (ep.show_imdb_id) ids.set('imdb', ep.show_imdb_id);
+        router.navigate(`/watch/tv/${encodeURIComponent(id)}/${ep.season_number || 1}/${ep.episode_number || 1}${ids.toString() ? `?${ids}` : ''}`);
+      }
     });
     return card;
   }

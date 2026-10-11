@@ -8,19 +8,28 @@ import { parseGenres, formatRating, sortByPopularity, filterWithPoster } from '.
 import { router } from '../router/index.js';
 import { createChat } from '../components/Chat.js';
 
-export async function watchPage({ params }) {
+export async function watchPage({ params, query = {} }) {
   const { type, id, season = '1', episode = '1' } = params;
+  const tmdbId = query.tmdb || (/^[0-9]+$/.test(id) ? id : '');
+  const imdbId = query.imdb || (/^tt[0-9]+$/i.test(id) ? id : '');
   const page = document.createElement('div');
   page.className = 'watch-page';
 
-  let currentProviderIndex = 0;
+  let currentProviderIndex = API.EMBED_PROVIDERS.findIndex(p => p.idType !== 'tmdb' || tmdbId);
   let embedUrl = '';
   const savedProgress = cache.getProgress(`${id}_${season}_${episode}`) || 0;
 
   function getEmbedUrl(index) {
     const provider = API.EMBED_PROVIDERS[index];
-    if (type === 'movie') return provider.getMovieUrl(id, savedProgress);
-    return provider.getTvUrl(id, season, episode, savedProgress);
+    const playerId = provider.idType === 'tmdb' ? tmdbId : provider.idType === 'imdb' ? imdbId : (tmdbId || imdbId);
+    if (!playerId) return '';
+    const encodedId = encodeURIComponent(playerId);
+    if (type === 'movie') return provider.id === 'autoembed'
+      ? provider.movie(encodedId, playerId.startsWith('tt') ? 'imdb' : 'tmdb')
+      : provider.movie(encodedId);
+    return provider.id === 'autoembed'
+      ? provider.tv(encodedId, season, episode, playerId.startsWith('tt') ? 'imdb' : 'tmdb')
+      : provider.tv(encodedId, season, episode);
   }
 
   embedUrl = getEmbedUrl(currentProviderIndex);
@@ -43,6 +52,8 @@ export async function watchPage({ params }) {
       allow="autoplay; fullscreen; picture-in-picture"
       loading="eager"
     ></iframe>`;
+
+  const iframe = playerWrap.querySelector('#video-player');
 
   if (roomId) {
     const layout = document.createElement('div');
@@ -69,10 +80,14 @@ export async function watchPage({ params }) {
   serverWrap.appendChild(serverLabel);
 
   API.EMBED_PROVIDERS.forEach((provider, idx) => {
+    if (provider.idType === 'tmdb' && !tmdbId) return;
+    if (provider.idType === 'imdb' && !imdbId) return;
     const btn = document.createElement('button');
     btn.className = `btn btn-outline ${idx === currentProviderIndex ? 'active' : ''}`;
     btn.style.cssText = 'padding:6px 14px; font-size:0.8rem;';
-    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;vertical-align:middle"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="6" x2="6.01" y2="6"/></svg> ${provider.name}`;
+    btn.dataset.providerIndex = String(idx);
+    btn.textContent = provider.name;
+    btn.setAttribute('aria-pressed', String(idx === currentProviderIndex));
     
     if (idx === currentProviderIndex) {
       btn.style.background = 'var(--accent)';
@@ -82,11 +97,11 @@ export async function watchPage({ params }) {
 
     btn.addEventListener('click', () => {
       currentProviderIndex = idx;
-      serverWrap.querySelectorAll('button').forEach((b, i) => {
+      serverWrap.querySelectorAll('button[data-provider-index]').forEach((b) => {
         // Skip the Room Create button if it exists
         if (!b.classList.contains('btn-outline')) return;
         
-        const bIdx = Array.from(serverWrap.querySelectorAll('.btn-outline')).indexOf(b);
+        const bIdx = parseInt(b.dataset.providerIndex, 10);
         if (bIdx === idx) {
           b.style.background = 'var(--accent)';
           b.style.borderColor = 'var(--accent)';
@@ -97,6 +112,7 @@ export async function watchPage({ params }) {
           b.style.color = '#fff';
         }
       });
+      serverWrap.querySelectorAll('.btn-outline').forEach(button => button.setAttribute('aria-pressed', String(parseInt(button.dataset.providerIndex, 10) === idx)));
       const iframe = playerWrap.querySelector('#video-player');
       if (iframe) iframe.src = getEmbedUrl(currentProviderIndex);
     });
@@ -130,6 +146,29 @@ export async function watchPage({ params }) {
     <div class="skeleton" style="height:16px;width:40%;border-radius:4px;margin-bottom:20px"></div>
   `;
   page.appendChild(infoWrap);
+  const episodeNav = document.createElement('div');
+  episodeNav.className = 'watch-actions episode-navigation';
+  if (type === 'tv') {
+    const prevButton = document.createElement('button');
+    prevButton.className = 'btn btn-secondary';
+    prevButton.textContent = '< ' + (i18n.t('episode_ep') || 'Episode') + ' ' + Math.max(1, parseInt(episode, 10) - 1);
+    prevButton.disabled = parseInt(episode, 10) <= 1;
+    prevButton.addEventListener('click', () => navigateEpisode(parseInt(season, 10), Math.max(1, parseInt(episode, 10) - 1)));
+    const nextButton = document.createElement('button');
+    nextButton.className = 'btn btn-primary';
+    nextButton.textContent = (i18n.t('episode_ep') || 'Episode') + ' ' + (parseInt(episode, 10) + 1) + ' >';
+    nextButton.addEventListener('click', () => navigateEpisode(parseInt(season, 10), parseInt(episode, 10) + 1));
+    episodeNav.append(prevButton, nextButton);
+  }
+  page.appendChild(episodeNav);
+
+  function navigateEpisode(nextSeason, nextEpisode) {
+    const ids = new URLSearchParams();
+    if (tmdbId) ids.set('tmdb', tmdbId);
+    if (imdbId) ids.set('imdb', imdbId);
+    const suffix = ids.toString() ? `?${ids}` : '';
+    router.navigate(`/watch/tv/${encodeURIComponent(id)}/${nextSeason}/${nextEpisode}${suffix}`);
+  }
 
   // Related row placeholder
   const relatedRow = createContentRow(
@@ -142,14 +181,27 @@ export async function watchPage({ params }) {
   // Listen for player events
   const progressKey = `${id}_${season}_${episode}`;
   window.addEventListener('message', (e) => {
-    if (e.data?.type !== 'PLAYER_EVENT') return;
-    const { player_status, player_progress, player_info } = e.data.data;
-    if (player_status === 'playing' && player_progress > 0) {
-      cache.setProgress(progressKey, player_progress);
+    if (!page.isConnected || !iframe.src) return;
+    let origin;
+    try { origin = new URL(iframe.src).origin; } catch { return; }
+    if (e.origin !== origin || !e.data || typeof e.data !== 'object') return;
+    if (e.data.source === 'vidspark-player') {
+      if (Number.isFinite(e.data.currentTime) && e.data.currentTime > 0) cache.setProgress(progressKey, e.data.currentTime);
+      if (type === 'tv' && e.data.event === 'ended') navigateEpisode(parseInt(season, 10), parseInt(episode, 10) + 1);
     }
-    if (player_status === 'completed' && type === 'tv') {
-      const nextEp = parseInt(episode) + 1;
-      router.navigate(`/watch/tv/${id}/${season}/${nextEp}`);
+    if ((origin === 'https://embed.vidrift.in' || origin === 'https://embed.vidrift.net') && e.data.type === 'vidrift:nextup-play' && type === 'tv') {
+      navigateEpisode(parseInt(season, 10), parseInt(episode, 10) + 1);
+    }
+    if ((origin === 'https://embed.vidrift.in' || origin === 'https://embed.vidrift.net') && e.data.type === 'vidrift:progress' && Number.isFinite(e.data.currentTime)) {
+      cache.setProgress(progressKey, e.data.currentTime);
+    }
+  });
+
+  iframe.addEventListener('load', () => {
+    const provider = API.EMBED_PROVIDERS[currentProviderIndex];
+    if (type === 'tv' && provider?.id === 'vidrift') {
+      const origin = new URL(iframe.src).origin;
+      iframe.contentWindow?.postMessage({ type: 'vidrift:nextup-info', next: { season: parseInt(season, 10), episode: parseInt(episode, 10) + 1 } }, origin);
     }
   });
 

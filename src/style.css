@@ -499,3 +499,6 @@ ul{list-style:none}
     margin-bottom: 10px;
   }
 }
+
+.watch-info .watch-actions{display:none}
+.episode-navigation{padding:0 4% 20px}

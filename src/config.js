@@ -5,26 +5,19 @@ export const API = {
   EPISODES_LATEST: 'https://vidapi.ru/episodes/latest/page-{PAGE}.json',
   STATS: 'https://vidapi.ru/imdb/api/?action=stats',
 
-  // Multiple Embed Providers for server switching
+  // Provider URL builders accept an explicitly selected identifier type.
   EMBED_PROVIDERS: [
-    {
-      id: 'vidsrc',
-      name: 'Server 1 (HD)',
-      getMovieUrl: (id, progress) => `https://vidsrc-embed.ru/embed/movie/${id}?primaryColor=%23E50914&lang=az${progress > 30 ? `&resumeAt=${progress}` : ''}`,
-      getTvUrl: (id, s, e, progress) => `https://vidsrc-embed.ru/embed/tv/${id}/${s}-${e}?primaryColor=%23E50914&lang=az${progress > 30 ? `&resumeAt=${progress}` : ''}`
-    },
-    {
-      id: 'vaplayer',
-      name: 'Server 2 (Fast)',
-      getMovieUrl: (id, progress) => `https://vaplayer.ru/embed/movie/${id}?primaryColor=%23E50914&lang=az${progress > 30 ? `&resumeAt=${progress}` : ''}`,
-      getTvUrl: (id, s, e, progress) => `https://vaplayer.ru/embed/tv/${id}/${s}/${e}?primaryColor=%23E50914&lang=az${progress > 30 ? `&resumeAt=${progress}` : ''}`
-    },
-    {
-      id: '2embed',
-      name: 'Server 3 (Backup)',
-      getMovieUrl: (id, progress) => `https://www.2embed.cc/embed/${id}`,
-      getTvUrl: (id, s, e, progress) => `https://www.2embed.cc/embedtv/${id}&s=${s}&e=${e}`
-    }
+    { id: 'vidcore', name: 'VidCore', idType: 'tmdb', movie: id => `https://vidcore.org/embed/movie/${id}?theme=E50914`, tv: (id, s, e) => `https://vidcore.org/embed/tv/${id}/${s}/${e}?theme=E50914` },
+    { id: 'embedwave', name: 'EmbedWave', idType: 'tmdb', movie: id => `https://embedwave.cc/embed/movie/${id}?server=auto`, tv: (id, s, e) => `https://embedwave.cc/embed/tv/${id}/${s}/${e}?server=auto` },
+    { id: 'ezvidapi', name: 'ezvidapi', idType: 'tmdb', movie: id => `https://ezvidapi.com/embed/movie/${id}`, tv: (id, s, e) => `https://ezvidapi.com/embed/tv/${id}/${s}/${e}` },
+    { id: 'vidrift', name: 'VidRift', idType: 'tmdb', movie: id => `https://embed.vidrift.in/embed/movie/${id}?brandColor=E50914`, tv: (id, s, e) => `https://embed.vidrift.in/embed/tv/${id}/${s}/${e}?brandColor=E50914` },
+    { id: 'apiplayer', name: 'APIPlayer.ru', idType: 'both', movie: id => `https://apiplayer.ru/embed/movie/${id}?lang=tr&color=E50914`, tv: (id, s, e) => `https://apiplayer.ru/embed/tv/${id}/${s}/${e}?lang=tr&color=E50914` },
+    { id: 'vidspark', name: 'VidSpark / MoviesAPI', idType: 'both', movie: id => `https://vidspark.to/movie/${id}?theme=E50914`, tv: (id, s, e) => `https://vidspark.to/tv/${id}/${s}/${e}?theme=E50914` },
+    { id: 'autoembed', name: 'AutoEmbed', idType: 'both', movie: (id, kind) => `https://autoembed.co/movie/${kind}/${id}`, tv: (id, s, e, kind) => `https://autoembed.co/tv/${kind}/${id}-${s}-${e}` },
+    { id: 'frembed', name: 'Frembed', idType: 'both', movie: id => `https://frembed.surf/embed/movie/${id}`, tv: (id, s, e) => `https://frembed.surf/embed/serie/${id}?sa=${s}&epi=${e}` },
+    { id: 'nontongo', name: 'Nontongo', idType: 'both', movie: id => `https://www.nontongo.win/embed/movie/${id}`, tv: (id, s, e) => `https://www.nontongo.win/embed/tv/${id}/${s}/${e}` },
+    { id: 'vidfast', name: 'VidFast', idType: 'both', movie: id => `https://vidfast.to/movie/${id}`, tv: (id, s, e) => `https://vidfast.to/tv/${id}/${s}/${e}` },
+    { id: 'vidlink', name: 'VidLink', idType: 'tmdb', movie: id => `https://vidlink.pro/movie/${id}?primaryColor=E50914`, tv: (id, s, e) => `https://vidlink.pro/tv/${id}/${s}/${e}?primaryColor=E50914` }
   ],
 
   // Primary color for player theming
