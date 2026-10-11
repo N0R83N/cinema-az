@@ -58,7 +58,7 @@ export async function moviesPage({ query }) {
     grid.innerHTML = '';
     const filtered = applyFilters(items);
     if (!filtered.length) {
-      grid.innerHTML = `<p style="color:var(--text3);padding:40px 0;grid-column:1/-1;text-align:center">${i18n.t('no_content')}</p>`;
+      grid.innerHTML = `<div class="category-empty" style="color:var(--text3);padding:40px 0;grid-column:1/-1;text-align:center">${currentPage >= totalPages ? i18n.t('no_content') : 'Bu kategoride henüz eşleşme bulunmadı; sonraki sayfaları da arayabilirsiniz.'}${currentPage < totalPages ? '<button type="button" class="filter-btn category-load-more" style="display:block;margin:16px auto 0">Daha fazla sonuç ara</button>' : ''}</div>`;
       return;
     }
     filtered.forEach(item => grid.appendChild(createMovieCard(item)));
@@ -85,6 +85,10 @@ export async function moviesPage({ query }) {
     renderGrid(allItems);
   });
 
+  grid.addEventListener('click', e => {
+    if (e.target.closest('.category-load-more')) loadPage(currentPage + 1);
+  });
+
   filterBar.querySelector('#sort-select').addEventListener('change', (e) => {
     activeSort = e.target.value;
     renderGrid(allItems);
@@ -99,15 +103,15 @@ export async function moviesPage({ query }) {
       const newItems = filterWithPoster(data.items || []);
       allItems.push(...newItems);
       updateGenreFilters();
-      if (p === 1) { renderGrid(allItems); }
-      else { applyFilters(newItems).forEach(item => grid.appendChild(createMovieCard(item))); }
+      renderGrid(allItems);
       currentPage = p;
     } catch { } finally { loading = false; }
   }
 
   // Infinite scroll
   const obs = new IntersectionObserver((entries) => {
-    if (entries[0].isIntersecting && currentPage < totalPages) loadPage(currentPage + 1);
+    const hasGenreMatches = activeGenre === 'all' || allItems.some(item => matchesGenre(item, activeGenre));
+    if (entries[0].isIntersecting && currentPage < totalPages && hasGenreMatches) loadPage(currentPage + 1);
   }, { rootMargin: `${APP_CONFIG.infiniteScrollOffset}px` });
   obs.observe(sentinel);
 
