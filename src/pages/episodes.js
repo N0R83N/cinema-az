@@ -49,10 +49,10 @@ export async function episodesPage() {
     const e = String(ep.episode_number || 1).padStart(2, '0');
     const badge = `${i18n.t('episode_season')}${s}${i18n.t('episode_ep')}${e}`;
 
-    const poster = ep.poster_url;
+    const poster = ep.poster_url || '';
 
     card.innerHTML = `
-      <div class="ep-thumb" style="position:relative;background:var(--bg3);border-radius:4px;overflow:hidden;background-image:url(${poster});background-size:cover;background-position:center;">
+      <div class="ep-thumb" style="position:relative;background:var(--bg3);border-radius:4px;overflow:hidden;background-size:cover;background-position:center;">
         ${!poster ? `<svg style="opacity:.35" width="20" height="20" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg>` : ''}
         <div class="ep-thumb-overlay" style="position:absolute;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;">
            <svg width="24" height="24" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg>
@@ -66,6 +66,8 @@ export async function episodesPage() {
           ${airDate ? `<span>${airDate}</span>` : ''}
         </div>
       </div>`;
+
+    if (poster) card.querySelector('.ep-thumb').style.backgroundImage = `url("${poster}")`;
 
     card.style.cursor = 'pointer';
     card.addEventListener('click', () => {
@@ -88,8 +90,14 @@ export async function episodesPage() {
         fetchMultipleTVPages(5) // Fetch pool for poster matching
       ]);
       
-      const posterMap = {};
-      tvPool.forEach(tv => { if (tv.imdb_id) posterMap[tv.imdb_id] = tv.poster_url; });
+      const posterMap = Object.create(null);
+      const normalizeTitle = value => String(value || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+      tvPool.forEach(tv => {
+        if (!tv.poster_url) return;
+        if (tv.imdb_id) posterMap[`imdb:${String(tv.imdb_id).toLowerCase()}`] = tv.poster_url;
+        if (tv.tmdb_id) posterMap[`tmdb:${String(tv.tmdb_id)}`] = tv.poster_url;
+        if (tv.title) posterMap[`title:${normalizeTitle(tv.title)}`] = tv.poster_url;
+      });
 
       totalPages = data.total_pages;
       if (p === 1) grid.innerHTML = '';
@@ -97,9 +105,13 @@ export async function episodesPage() {
       (data.items || [])
         .filter(ep => ep.show_title || ep.episode_title)
         .forEach(ep => {
-          // Attach poster if missing
-          ep.poster_url = ep.poster_url || posterMap[ep.show_imdb_id] || '';
-          grid.appendChild(createEpCard(ep));
+          // Episode records omit poster URLs; resolve from the parent series using either ID.
+          const poster = ep.poster_url
+            || posterMap[`tmdb:${String(ep.show_tmdb_id || '')}`]
+            || posterMap[`imdb:${String(ep.show_imdb_id || '').toLowerCase()}`]
+            || posterMap[`title:${normalizeTitle(ep.show_title)}`]
+            || '';
+          grid.appendChild(createEpCard({ ...ep, poster_url: poster }));
         });
       currentPage = p;
     } catch (e) {
